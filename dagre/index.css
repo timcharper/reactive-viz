@@ -19,3 +19,18 @@ text {
   stroke: #333;
   stroke-width: 1.5px;
 }
+
+.phase-1 rect {
+  stroke-width: 1.5px;
+  stroke: #bbb;
+  fill: #666;
+}
+.phase-2 rect {
+  stroke-width: 1.5px;
+  stroke: #bbb;
+  fill: #fff;
+}
+
+span.node-name, span.message-count, span.message-rate {
+  display: block;
+}

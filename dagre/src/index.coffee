@@ -1,4 +1,5 @@
 wsUri = "ws://localhost:8080/"
+runningWindowMs = 500
 
 websocketFsm = () ->
   websocket = new WebSocket(wsUri)
@@ -14,7 +15,7 @@ websocketFsm = () ->
             @handle "close", evt
 
           websocket.onmessage = (evt) =>
-            @handle "message", evt
+            @handle "message", evt.data
 
           websocket.onerror = (evt) ->
             @handle "error", evt
@@ -30,116 +31,172 @@ websocketFsm = () ->
         "publish": ([topic, payload]) ->
           console.log "publishing", topic, payload
           websocket.send(JSON.stringify([topic, payload]))
-        "*": (a, b, c) ->
-          console.log "very thing", a, b, c
+        "close": ->
+          websocket.close()
+          @transition("close")
+        "message": (data) ->
+          [channel, payload] = JSON.parse(data)
+          @emit(channel, payload)
+      close:
+        "close": -> # nothing
+        "*": -> console.log("we're closed")
   )
 
 socket = websocketFsm()
-socket.handle("publish", ["get-data"])
-socket.handle("publish", ["get-data"])
-
-# Create the input graph
-g = new dagreD3.graphlib.Graph().setGraph({}).setDefaultEdgeLabel(->
-  {}
-)
-
-# Here we"re setting nodeclass, which is used by our custom drawNodes function
-# below.
-g.setNode 0,
-  label: "TOP"
-  class: "type-TOP"
-
-g.setNode 1,
-  label: "S"
-  class: "type-S"
-
-g.setNode 2,
-  label: "NP"
-  class: "type-NP"
-
-g.setNode 3,
-  label: "DT"
-  class: "type-DT"
-
-g.setNode 4,
-  label: "This"
-  class: "type-TK"
-
-g.setNode 5,
-  label: "VP"
-  class: "type-VP"
-
-g.setNode 6,
-  label: "VBZ"
-  class: "type-VBZ"
-
-g.setNode 7,
-  label: "is"
-  class: "type-TK"
-
-g.setNode 8,
-  label: "NP"
-  class: "type-NP"
-
-g.setNode 9,
-  label: "DT"
-  class: "type-DT"
-
-g.setNode 10,
-  label: "an"
-  class: "type-TK"
-
-g.setNode 11,
-  label: "NN"
-  class: "type-NN"
-
-g.setNode 12,
-  label: "example"
-  class: "type-TK"
-
-g.setNode 13,
-  label: "."
-  class: "type-."
-
-g.setNode 14,
-  label: "sentence"
-  class: "type-TK"
-
-g.nodes().forEach (v) ->
-  node = g.node(v)
-  
-  # Round the corners of the nodes
-  node.rx = node.ry = 5
-  return
+socket.handle("publish", ["ping"])
+socket.handle("publish", ["ping"])
 
 
-# Set up edges, no special attributes.
-g.setEdge 3, 4
-g.setEdge 2, 3
-g.setEdge 1, 2
-g.setEdge 6, 7
-g.setEdge 5, 6
-g.setEdge 9, 10
-g.setEdge 8, 9
-g.setEdge 11, 12
-g.setEdge 8, 11
-g.setEdge 5, 8
-g.setEdge 1, 5
-g.setEdge 13, 14
-g.setEdge 1, 13
-g.setEdge 0, 1
+newGraph = () ->
+  nodeIdToIndexMap = {}
+  _nodeIndex = 0
+  nodeIndex = (nodeId) ->
+    if nodeIdToIndexMap[nodeId]?
+      nodeIdToIndexMap[nodeId]
+    else
+      idx = _nodeIndex
+      _nodeIndex += 1
+      nodeIdToIndexMap[nodeId] = idx
+    
+  # Create the input graph
+  g = new dagreD3.graphlib.Graph().setGraph({}).setDefaultEdgeLabel(->
+    {}
+  )
 
-# Create the renderer
-render = new dagreD3.render()
+  # Create the renderer
+  render = new dagreD3.render()
 
-# Set up an SVG group so that we can translate the final graph.
-svg = d3.select("svg")
-svgGroup = svg.append("g")
+  # Set up an SVG group so that we can translate the final graph.
+  svg = d3.select("svg")
+  svgGroup = svg.select("g")
 
-# Run the renderer. This is what draws the final graph.
-render d3.select("svg g"), g
+  doRender = () ->
+    g.nodes().forEach (v) ->
+      node = g.node(v)
 
-# Center the graph
-xCenterOffset = (svg.attr("width") - g.graph().width) / 2
-svgGroup.attr "transform", "translate(" + xCenterOffset + ", 20)"
-svg.attr "height", g.graph().height + 40
+      # Round the corners of the nodes
+      node.rx = node.ry = 5
+      return
+
+    # render d3.select("svg g"), g
+    svgGroup.call(render, g)
+
+
+    # Center the graph
+    xCenterOffset = (svg.attr("width") - g.graph().width) / 2
+    svgGroup.attr "transform", "translate(" + xCenterOffset + ", 20)"
+    svg.attr "height", g.graph().height + 40
+
+  maxRate = 0
+  calcMessageRate = (deliveries) ->
+    border = (new Date) - runningWindowMs
+    midPoint = (new Date) - (runningWindowMs / 2)
+    while (deliveries[0] && deliveries[0] < border)
+      deliveries.shift()
+    if (deliveries.length == 0)
+      return 0
+    midCount = _.findIndex deliveries, (d) -> d > midPoint
+    if (midCount == -1)
+      midCount = deliveries.length
+    rate1 = midCount / (runningWindowMs / 2)
+    rate2 = (deliveries.length - midCount) / (runningWindowMs / 2)
+    rate = (rate1 + rate2) / 2
+
+    if (rate > maxRate)
+      maxRate = rate
+    rate
+
+  nodeHtml = (node) ->
+    r = calcMessageRate(node.deliveries) * 1000
+    html = "<div>";
+    html += "<span class=node-name>#{node.name}</span>";
+    html += "<span class=message-count>#{node.messageCount}</span>";
+    html += "<span class=message-rate>#{r.toFixed(1)} / s</span>";
+    html += "</div>";
+    html
+
+  nodes = {}
+  registerNode = ({id, name}) -> 
+    console.log("graph.new-node", id)
+    nodes[id] = {id, name, messageCount: 0, deliveries: []}
+    nodes[id].deliveries.name = name
+    g.setNode nodeIndex(id), id: id, name: name, labelType: "html", label: nodeHtml(nodes[id]), class: "type-#{id}"
+
+  registerEdge = ({from, to}) ->
+    console.log("graph.new-edge", from, to)
+    g.setEdge nodeIndex(from), nodeIndex(to)
+
+  toggleStates = {}
+  new machina.Fsm(
+    initialState: "init"
+    states:
+      init:
+        "graph.new-node": registerNode
+        "graph.new-edge": registerEdge
+        "graph.initialized": ->
+          @transition("drawing")
+        "*": (payload, a) ->
+          console.log("unknown msg:", payload, a)
+      drawing:
+        _onEnter: ->
+          try
+            doRender()
+          catch error
+            console.log(error)
+            console.log(error.stack)
+        "graph.new-node": (data) ->
+          registerNode(data)
+          doRender()
+        "graph.new-edge": (data) ->
+          registerEdge(data)
+          doRender()
+        "node.message": ({nodeId}) ->
+          idx = nodeIndex(nodeId)
+          gNode = g.node(idx)
+          gNode.changed = true
+          g.setNode(idx, gNode)
+
+          n = nodes[nodeId]
+          n.messageCount += 1
+          n.deliveries.push(new Date)
+          # svgGroup.call(render, g)
+          # animate a message being received here
+        "render": ->
+          g.nodes().forEach (idx) ->
+            gNode = g.node(idx)
+            node = nodes[gNode.id]
+            rate = calcMessageRate(node.deliveries)
+            # if (gNode.changed)
+            #   gNode.changed = false
+            #   gNode.phase = ((gNode.phase || 0) + 1) % 2
+            #   gNode.class = "phase-#{gNode.phase}"
+            gNode.label = nodeHtml(nodes[gNode.id])
+            console.log(rate, maxRate)
+            percent  = 255 - Math.round((rate / maxRate) * 255)
+            gNode.style = "fill: RGB(255,#{percent},#{percent})"
+            console.log gNode.style
+            # node = g.node(v)
+
+            # # Round the corners of the nodes
+            # node.rx = node.ry = 5
+          svgGroup.call(render, g)
+        "*": (payload, a) ->
+          console.log("unknown msg:", payload, a)
+
+  )
+
+graph = newGraph()
+
+socket.on "graph.new-node", (n) -> graph.handle "graph.new-node", n
+socket.on "graph.new-edge", (n) ->
+  graph.handle "graph.new-edge", n
+socket.on "graph.initialized", (n) -> graph.handle "graph.initialized", n
+socket.on "node.message", (n) -> graph.handle "node.message", n
+setInterval(
+  (->
+    try
+      graph.handle("render")
+    catch e
+      console.log e
+  ),
+  100)
