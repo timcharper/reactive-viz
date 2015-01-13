@@ -108,6 +108,13 @@ newGraph = () ->
 
   toggleStates = {}
   stats = {counts:{}, rates: {}, maxRate: 1}
+
+  calcColor = (percent) ->
+    shadeR = Math.round(255 - (percent * 255))
+    shadeG = Math.round(255 - (percent * 32)) # 255 - no activity, 128 - full activity
+    shadeB = Math.round(255 - (percent * 255))
+    "RGB(#{shadeR}, #{shadeG}, #{shadeB})"
+
   new machina.Fsm(
     initialState: "init"
     states:
@@ -139,12 +146,7 @@ newGraph = () ->
             node = nodes[gNode.id]
             rate = stats.rates[node.id]
             gNode.label = nodeHtml(node)
-            percent  = 255 - Math.round((rate / stats.maxRate) * 255)
-            gNode.style = "fill: RGB(#{percent},255,#{percent})"
-            # node = g.node(v)
-
-            # # Round the corners of the nodes
-            # node.rx = node.ry = 5
+            gNode.style = "fill: #{calcColor(rate / stats.maxRate)}"
           svgGroup.call(render, g)
         "*": (payload, a) ->
           console.log("unknown msg:", payload, a)
