@@ -76,7 +76,7 @@ class WebSocketWorker(val serverConnection: ActorRef) extends HttpServiceActor w
   }
 }
 
-object SimpleServer extends App {
+object HttpServer extends App {
 
   object WebSocketServer {
     def props() = Props(classOf[WebSocketServer])

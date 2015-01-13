@@ -1,4 +1,4 @@
-package m
+package m.lib
 
 import akka.actor.{ ActorSystem, Props, ActorRef }
 import akka.stream.FlowMaterializer
@@ -54,7 +54,7 @@ object MergeUnordered {
     var consumersCompleted: Int = 0
     var consumerCount: Option[Int] = None
 
-    override def preStart: Unit = 
+    override def preStart: Unit =
       onInit(
         self,
         new MaxInFlightRequestStrategy(max = maxQueueLength) {
@@ -94,7 +94,7 @@ object MergeUnordered {
         context.stop(self)
     }
 
-    @inline private def maybeComplete(): Unit = 
+    @inline private def maybeComplete(): Unit =
       if ((Some(consumersCompleted) == consumerCount) && queue.isEmpty) {
         onComplete() // if some error occurred upstream, then the streams should not be completed and we will not arrive at this state.
         context.stop(self)

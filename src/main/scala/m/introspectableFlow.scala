@@ -105,9 +105,6 @@ class IntrospectableFlow[+Out](registry: ActorRef, listener: ActorRef, val nodeN
   def map[K](fn: Out => K): IntrospectableFlow[K] =
     chain("map")(_.map(fn))
 
-  def bottleneck[K](delayMs: Int): IntrospectableFlow[Out] =
-    chain(s"bottleneck(${delayMs}ms)")(_.map { x => Thread.sleep(delayMs); x })
-
   // creates new node, registering upstream edges to it
   def mergeUnordered[T](implicit mergeUnorderedStrategy: Strategy[Out, T], actorSystem: ActorSystem, materializer: FlowMaterializer): IntrospectableFlow[T] = {
     lazy val mergeJunction: IntrospectableFlow[T] = chain("mergeUnordered") { src =>
