@@ -34,3 +34,7 @@ text {
 span.node-name, span.message-count, span.message-rate {
   display: block;
 }
+
+span.node-name {
+  font-weight: bold;
+}

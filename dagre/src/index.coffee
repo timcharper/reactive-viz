@@ -1,5 +1,5 @@
 wsUri = "ws://localhost:8080/"
-runningWindowMs = 500
+runningWindowMs = 1000
 
 websocketFsm = () ->
   websocket = new WebSocket(wsUri)
@@ -95,13 +95,7 @@ newGraph = () ->
       deliveries.shift()
     if (deliveries.length == 0)
       return 0
-    midCount = _.findIndex deliveries, (d) -> d > midPoint
-    if (midCount == -1)
-      midCount = deliveries.length
-    rate1 = midCount / (runningWindowMs / 2)
-    rate2 = (deliveries.length - midCount) / (runningWindowMs / 2)
-    rate = (rate1 + rate2) / 2
-
+    rate = (deliveries.length / runningWindowMs)
     if (rate > maxRate)
       maxRate = rate
     rate
@@ -171,10 +165,8 @@ newGraph = () ->
             #   gNode.phase = ((gNode.phase || 0) + 1) % 2
             #   gNode.class = "phase-#{gNode.phase}"
             gNode.label = nodeHtml(nodes[gNode.id])
-            console.log(rate, maxRate)
             percent  = 255 - Math.round((rate / maxRate) * 255)
-            gNode.style = "fill: RGB(255,#{percent},#{percent})"
-            console.log gNode.style
+            gNode.style = "fill: RGB(#{percent},255,#{percent})"
             # node = g.node(v)
 
             # # Round the corners of the nodes

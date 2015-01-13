@@ -114,7 +114,7 @@ object MergeUnordered {
     }
   }
 
-  def apply[K](streams: Source[Source[K]], maxQueueLength: Int = 20)(implicit system: ActorSystem, materializer: FlowMaterializer): Source[K] = {
+  def apply[K](streams: Source[Source[K]], maxQueueLength: Int = 10)(implicit system: ActorSystem, materializer: FlowMaterializer): Source[K] = {
     def boot(publisher: ActorRef, publisherBlockingStrategy: RequestStrategy): Unit = {
       import system.dispatcher
       streams.
