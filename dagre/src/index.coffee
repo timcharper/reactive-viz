@@ -86,7 +86,7 @@ newGraph = () ->
   nodeHtml = (node) ->
     html = "<div>";
     html += "<span class=node-name>#{node.name}</span>";
-    html += "<span class=message-count>#{stats.counts[node.id]}</span>";
+    html += "<span class=message-count>#{stats.counts[node.id] || 0 }</span>";
     html += "<span class=message-rate>#{(stats.rates[node.id] || 0).toFixed(1)} / s</span>";
     html += "</div>";
     html
@@ -225,7 +225,7 @@ i = setInterval(
     catch e
       console.log e.stack
   ),
-  100)
+  200)
 
 stop = () ->
   clearInterval(i)

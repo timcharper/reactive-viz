@@ -3,6 +3,7 @@ package m
 import akka.actor.{ActorSystem, Props, Actor, ActorRef}
 import akka.stream.FlattenStrategy
 import akka.stream.FlowMaterializer
+import akka.stream.scaladsl.Flow
 import akka.stream.scaladsl.Source
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -165,6 +166,13 @@ class IntrospectableFlow[+Out](registry: ActorRef, listener: ActorRef, val nodeN
 
   def mapConcat[T](fn: Out => immutable.Seq[T]): IntrospectableFlow[T] =
     chain("mapConcat")(_.mapConcat(fn))
+
+  def filter(fn: Out => Boolean): IntrospectableFlow[Out] =
+    chain("filter")(_.filter(fn))
+
+  def via[U](flow: Flow[Out, U]): IntrospectableFlow[U] = {
+    chain("via")(_.via(flow))
+  }
 
 }
 

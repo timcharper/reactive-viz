@@ -62,40 +62,40 @@ widestretched
   val hasFragile = anyContains(hazardous)_
 }
 
-object PackageGenerator extends App {
-  val lines = if (args.length > 1) args(1).toInt else 1000
+// object PackageGenerator extends App {
+//   val lines = if (args.length > 1) args(1).toInt else 1000
 
-  // def readWordList = {
-  //   import java.nio.file._
-  //   val shake = FileSystems.getDefault.getPath("./shake.txt")
+//   // def readWordList = {
+//   //   import java.nio.file._
+//   //   val shake = FileSystems.getDefault.getPath("./shake.txt")
 
-  //   val wordSet = scala.collection.mutable.Set.empty[String]
-  //   for {
-  //     line <- java.nio.file.Files.readAllLines(shake)
-  //     word <- line.split(" ")
-  //     lc = notWordRegex.replaceAllIn(word.toLowerCase(), "")
-  //   } wordSet.add(lc)
-  //   wordSet.toVector
-  // }
-  // val words = readWordList
+//   //   val wordSet = scala.collection.mutable.Set.empty[String]
+//   //   for {
+//   //     line <- java.nio.file.Files.readAllLines(shake)
+//   //     word <- line.split(" ")
+//   //     lc = notWordRegex.replaceAllIn(word.toLowerCase(), "")
+//   //   } wordSet.add(lc)
+//   //   wordSet.toVector
+//   // }
+//   // val words = readWordList
 
-  import Contents._
-  for (n <- 1 to 4) {
-    val f = new PrintWriter(s"packages/packages${n}.json.ld")
-    def pickRandom[T](l: Seq[T]): T = l(Math.abs(Random.nextInt % l.length))
+//   import Contents._
+//   for (n <- 1 to 4) {
+//     val f = new PrintWriter(s"packages/packages${n}.json.ld")
+//     def pickRandom[T](l: Seq[T]): T = l(Math.abs(Random.nextInt % l.length))
 
-    def maybeObj(prob: Double)(gen: => JsObject): JsObject = {
-      if (Math.random < 0.1) gen else Json.obj()
-    }
-    for (l <- 1 to lines) {
-      val words = (1 to (Math.abs(Random.nextInt % 50))) map { _ => pickRandom(Contents.all) }
+//     def maybeObj(prob: Double)(gen: => JsObject): JsObject = {
+//       if (Math.random < 0.1) gen else Json.obj()
+//     }
+//     for (l <- 1 to lines) {
+//       val words = (1 to (Math.abs(Random.nextInt % 50))) map { _ => pickRandom(Contents.all) }
 
-      val box = Json.obj("contents" -> words) ++
-        maybeObj(0.10) { Json.obj("hazardous" -> anyContains(hazardous)(words)) } ++
-        maybeObj(0.10) { Json.obj("fragile" -> anyContains(fragile)(words)) }
+//       val box = Json.obj("contents" -> words) ++
+//         maybeObj(0.10) { Json.obj("hazardous" -> anyContains(hazardous)(words)) } ++
+//         maybeObj(0.10) { Json.obj("fragile" -> anyContains(fragile)(words)) }
 
-      f.println(box.toString)
-    }
-    f.close()
-  }
-}
+//       f.println(box.toString)
+//     }
+//     f.close()
+//   }
+// }

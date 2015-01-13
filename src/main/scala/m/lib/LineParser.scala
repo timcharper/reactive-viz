@@ -10,8 +10,12 @@ class LineParser(separator: String = "\n", maximumLineBytes: Int = 2048) extends
   private var buffer = ByteString.empty
   private var nextPossibleMatch = 0
 
+  def withCatching[T](body: => T): T =
+    try body
+    catch { case e: Throwable => println(e);println(e.getStackTrace); throw(e) }
+
   def initial = new State {
-    override def onPush(chunk: ByteString, ctx: Context[String]): Directive = {
+    override def onPush(chunk: ByteString, ctx: Context[String]): Directive = withCatching {
       buffer ++= chunk
       if (buffer.size > maximumLineBytes)
         ctx.fail(new IllegalStateException(s"Read ${buffer.size} bytes " +
@@ -19,8 +23,8 @@ class LineParser(separator: String = "\n", maximumLineBytes: Int = 2048) extends
       else emit(doParse(Vector.empty).iterator, ctx)
     }
 
-    @tailrec
-    private def doParse(parsedLinesSoFar: Vector[String]): Vector[String] = {
+    // @tailrec
+    private def doParse(parsedLinesSoFar: Vector[String]): Vector[String] = withCatching {
       val possibleMatchPos = buffer.indexOf(firstSeparatorByte, from = nextPossibleMatch)
       if (possibleMatchPos == -1) {
         // No matching character, we need to accumulate more bytes into the buffer

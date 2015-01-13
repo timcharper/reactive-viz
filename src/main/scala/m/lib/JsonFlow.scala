@@ -12,7 +12,7 @@ object JsonFlow {
 
   val fromByteString: Flow[ByteString, JsValue] =
     Flow[ByteString].
-      transform( () => new LineParser("\n", 2 ^ 16) ).
+      transform( () => new LineParser("\n", 65536 )).
       map(Json.parse)
 
   def withSerialization(flow: Flow[ByteString, ByteString]): Flow[JsValue, JsValue] = {

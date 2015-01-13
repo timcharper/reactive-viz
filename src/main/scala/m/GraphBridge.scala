@@ -12,6 +12,7 @@ object JsonFormats {
 class GraphInstance(websocket: ActorRef) extends Actor {
   import IntrospectableFlow._
   import JsonFormats._
+
   val flow = context.actorOf(graphs.Numbers(self))
   // val flow = context.actorOf(graphs.Shipping(self))
 

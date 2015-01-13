@@ -16,4 +16,3 @@ gulp.task('coffee', function() {
 gulp.task('watch', function() {
   gulp.watch(paths.coffee, ['coffee']);
 });
-
