@@ -20,6 +20,12 @@ text {
   stroke-width: 1.5px;
 }
 
+.edgePath path.path {
+  stroke: #333;
+  fill: none;
+  stroke-width: 1.5px;
+}
+
 .phase-1 rect {
   stroke-width: 1.5px;
   stroke: #bbb;

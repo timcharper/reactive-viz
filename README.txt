@@ -1,0 +1,4 @@
+- Have some labels (ability to add comments???) !!!
+- Explain the graph in detail
+- Tell a story!
+- Label groupBy with an edge, rather than node.

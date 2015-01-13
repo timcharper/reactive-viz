@@ -33,6 +33,8 @@ websocketFsm = () ->
           websocket.send(JSON.stringify([topic, payload]))
         "close": ->
           websocket.close()
+        "closed": ->
+          @transition("closd")
         "message": (data) ->
           [channel, payload] = JSON.parse(data)
           @emit(channel, payload)
@@ -96,9 +98,13 @@ newGraph = () ->
     nodes[id].deliveries.name = name
     g.setNode nodeIndex(id), id: id, name: name, labelType: "html", label: nodeHtml(nodes[id]), class: "type-#{id}"
 
+
   registerEdge = ({from, to, properties}) ->
     console.log("graph.new-edge", from, to, properties)
-    g.setEdge nodeIndex(from), nodeIndex(to)
+    g.setEdge nodeIndex(from), nodeIndex(to),
+      label: properties.label
+      class: "jerk"
+      style: if properties.subStream then "stroke: #f66; stroke-width: 2px" else null
 
   toggleStates = {}
   stats = {counts:{}, rates: {}, maxRate: 1}
@@ -209,7 +215,7 @@ socket.on "graph.initialized", (n) -> graph.handle "graph.initialized", n
 socket.on "node.message", (n) -> counter.handle "node.message", n
 counter.on "stats", (stats) -> graph.handle "update-stats", stats
 
-setInterval(
+i = setInterval(
   (->
     try
       counter.handle("calculate")
@@ -218,3 +224,7 @@ setInterval(
       console.log e.stack
   ),
   100)
+
+stop = () ->
+  clearInterval(i)
+  socket.handle("close")
