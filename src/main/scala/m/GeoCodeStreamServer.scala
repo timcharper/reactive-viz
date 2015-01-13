@@ -21,7 +21,7 @@ object GeoCodeStreamServer extends App {
     map {
       case v: JsObject =>
         // apply sophisticated geocoding algorithm
-        v.asInstanceOf[JsObject] ++ Json.obj("lat" -> Math.random, "long" -> Math.random)
+        v.asInstanceOf[JsObject] ++ Json.obj("lat" -> (Math.random * 60), "long" -> (Math.random * 90))
       case o =>
         o // I don't know what this... just send it on down ???
     }.

@@ -1,10 +1,14 @@
 package m
 
 import akka.actor.{ActorSystem, Props, Actor, ActorRef}
+import akka.stream.FlattenStrategy
 import akka.stream.FlowMaterializer
 import akka.stream.scaladsl.Source
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import m.lib.MergeUnordered
+import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable
 
 trait Strategy[-T, U] {
   def apply(o: Source[T])(handler: IntrospectableFlow[U] => Unit)(implicit actorSystem: ActorSystem, materializer: FlowMaterializer): Source[U]
@@ -21,6 +25,15 @@ class MergeUnorderedStrategy[T] extends Strategy[IntrospectableFlow[T], T] {
 }
 object Strategy {
   implicit def mergeUnorderedStrategy[T]: Strategy[IntrospectableFlow[T], T] = new MergeUnorderedStrategy[T]
+}
+
+class IntrospectableFlattenStrategy[T](val wrapped: FlattenStrategy[Source[T], T]) extends Strategy[IntrospectableFlow[T], T] {
+  def apply(o: Source[IntrospectableFlow[T]])(handler: IntrospectableFlow[T] => Unit)(implicit actorSystem: ActorSystem, materializer: FlowMaterializer): Source[T] = {
+    o.map { flow =>
+      handler(flow)
+      flow.get
+    }.flatten(wrapped)
+  }
 }
 
 object GraphRegistry {
@@ -115,13 +128,52 @@ class IntrospectableFlow[+Out](registry: ActorRef, listener: ActorRef, val nodeN
     mergeJunction
   }
 
+  def flatten[T](flattenStrategy: Strategy[Out, T])(implicit actorSystem: ActorSystem, materializer: FlowMaterializer): IntrospectableFlow[T] = {
+    lazy val flattenJunction: IntrospectableFlow[T] = chain("flatten") { src =>
+      flattenStrategy(src) { f =>
+        registry ! GraphRegistry.RegisterEdge(f, flattenJunction, GraphRegistry.EdgeProperties(subStream = Some(true)))
+      }
+    }
+    flattenJunction
+  }
+
+  def mapAsync[U](fn: Out => Future[U]): IntrospectableFlow[U] =
+    chain("mapAsync")(_.mapAsync(fn))
+
+
+  def mapAsyncUnordered[U](fn: Out => Future[U]): IntrospectableFlow[U] =
+    chain("mapAsyncUnordered")(_.mapAsyncUnordered(fn))
+
+
+  def grouped(n: Int): IntrospectableFlow[immutable.Seq[Out]] =
+    chain("grouped")(_.grouped(n))
+
+
+  def groupedWithin(n: Int, d: FiniteDuration): IntrospectableFlow[immutable.Seq[Out]] =
+    chain("groupedWithin")(_.groupedWithin(n, d))
+
+
+  def fold[U](zero: U)(f: (U, Out) => U)(implicit materializer: FlowMaterializer): Future[U] = {
+    registry ! GraphRegistry.MarkInitialized // this is a lie.
+    (chain("fold") { _.map(identity) }).get.fold(zero)(f)
+  }
+
   def foreach(fn: Out => Unit)(implicit ec: ExecutionContext, materializer: FlowMaterializer): Future[Unit] = {
     registry ! GraphRegistry.MarkInitialized // this is a lie.
     (chain("foreach") { _.map(identity) }).get.foreach(fn)
   }
+
+  def mapConcat[T](fn: Out => immutable.Seq[T]): IntrospectableFlow[T] =
+    chain("mapConcat")(_.mapConcat(fn))
+
 }
 
 object IntrospectableFlow {
+  object Implicits {
+    implicit def i[T](f: FlattenStrategy[Source[T], T]): IntrospectableFlattenStrategy[T] = {
+      new IntrospectableFlattenStrategy(f)
+    }
+  }
   var id: Int = 0
   case class FlowMessage(nodeId: String, msg: Any)
   def nextId: Int = synchronized {
