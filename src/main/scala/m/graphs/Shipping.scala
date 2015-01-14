@@ -32,6 +32,10 @@ object ShippingHelpers {
     p.copy(hazardous = Some(Contents.hasHazardous(p.contents.take(10))))
   }
 
+  def quickFragileScan(p: Package) = {
+    Contents.hasFragile(p.contents.take(3))
+  }
+
   def longHazardScan(p: Package): Future[Package] = Future {
     Thread.sleep(p.contents.length * 10) // large packages take longer
     p.copy(hazardous = Some(Contents.hasHazardous(p.contents.take(10))))
@@ -47,42 +51,44 @@ object Shipping extends DemoableFlow {
   import ShippingHelpers._
   implicit val packageFormat = Json.format[Package]
 
+  def delay[T](d: FiniteDuration)(f: => T)(implicit system: ActorSystem): Future[T] = after(d, system.scheduler) { Future(f) }
+  def shipFragileHazard(crate: Seq[Package])(implicit system: ActorSystem) = delay(5 seconds) { crate }
+  def shipFragile(crate: Seq[Package])(implicit system: ActorSystem) = delay(3 seconds) { crate }
+  def shipHazard(crate: Seq[Package])(implicit system: ActorSystem) = delay(2 seconds) { crate }
+  def ship(crate: Seq[Package])(implicit system: ActorSystem) = delay(1 seconds) { crate }
+
+  def fitsInHazardScanMachine(pkg: Package): Boolean = pkg.contents.length < 30
+
+
   def flow(listener: ActorRef)(implicit system: ActorSystem): Unit = {
     implicit val materializer = FlowMaterializer()
-    val inputFiles = FileUtils.iterateFiles(new File("./packages/"), Array("json.ld"), true).toList.sortBy(_.toString)
+    val batches = FileUtils.iterateFiles(new File("./packages/"), Array("json.ld"), true).toList.sortBy(_.toString)
 
-    def delay[T](d: FiniteDuration)(f: => T): Future[T] = after(d, system.scheduler) { Future(f) }
-    def shipFragileHazard(crate: Seq[Package]): Future[Unit] = delay(5 seconds) {
-      println("shipped fragile hazardous")
-    }
-    def shipFragile(crate: Seq[Package]): Future[Unit] = delay(3 seconds) {
-      println("shipped fragile")
-    }
-    def shipHazard(crate: Seq[Package]): Future[Unit] = delay(2 seconds) {
-      println("shipped hazard")
-    }
-    def ship(crate: Seq[Package]): Future[Unit] = delay(1 seconds) {
-      println("shipped normal")
-    }
-
-    val a = IntrospectableFlow(listener, Source(inputFiles)).
-      map { f => IntrospectableFlow(listener, Source(() => new AutoClosingLineIterator(f))) }.
+    val a = IntrospectableFlow(listener, Source(batches)).
+      map { f => IntrospectableFlow(listener, Source(() =>
+        new AutoClosingLineIterator(f))) }.
       flatten(FlattenStrategy.concat[String]).
       map(Json.parse(_).as[Package]).
+      // Is it labeled for hazardous?
       groupBy { pkg =>
         if (pkg.hazardous.nonEmpty) 'hasHazardLabel else 'noHazardLabel }.
       map {
         case ('hasHazardLabel, flow) => flow.map(identity) // send some frequent shipper points ?
         case ('noHazardLabel, flow) =>
+          // can it fit in our hazard detection machine?
           flow.
-            groupBy { pkg => if (pkg.contents.length > 30) 'inspectionNeeded else 'sensorTestable }.
+            groupBy { pkg => if (fitsInHazardScanMachine(pkg)) 'sensorTestable else 'inspectionNeeded }.
             map {
-              case ('sensorTestable, flow) => flow.mapAsyncUnordered(longHazardScan)
-              case ('inspectionNeeded, flow) => flow.map(quickHazardScan)
+              case ('inspectionNeeded, flow) => flow.mapAsyncUnordered(longHazardScan)
+              case ('sensorTestable, flow) =>   flow.map(quickHazardScan)
             }.
             mergeUnordered
       }.
       mergeUnordered.
+
+      // map(Json.toJson(_)).
+      // foreach(println)
+
       groupBy { pkg =>
         if (pkg.fragile.nonEmpty) 'hasFragileLabel else 'noFragileLabel
       }.
@@ -90,7 +96,7 @@ object Shipping extends DemoableFlow {
         case ('hasFragileLabel, flow) => flow.map(identity) // send more frequent shipper points ?
         case ('noFragileLabel, flow) =>
           flow.
-            groupBy { pkg => if (Contents.hasFragile(pkg.contents.take(3))) 'obvious else 'inspectionNeeded }.
+            groupBy { pkg => if (quickFragileScan(pkg)) 'obvious else 'inspectionNeeded }.
             map {
               case ('obvious, flow) => flow.map { p => p.copy(fragile = Some(true)) }
               case ('inspectionNeeded, flow) => flow.mapAsyncUnordered(longFragileScan)
@@ -98,6 +104,10 @@ object Shipping extends DemoableFlow {
             mergeUnordered
       }.
       mergeUnordered.
+
+      // map(Json.toJson(_)).
+      // foreach(println)
+
       groupBy {
         case Package(Some(true),  Some(true),  _) => 'fragileHazard
         case Package(Some(false), Some(true),  _) => 'fragile
@@ -109,22 +119,22 @@ object Shipping extends DemoableFlow {
           flow.
             groupedWithin(100, 4 seconds).
             mapAsync { shipFragileHazard }.
-            foreach(identity)
+            foreach { cargo => println(s"shipped ${cargo.length} fragileHazard items") }
         case ('fragile, flow) =>
           flow.
             groupedWithin(100, 4 seconds).
-            mapAsync { shipHazard }.
-            foreach(identity)
+            mapAsync { shipFragile }.
+            foreach { cargo => println(s"shipped ${cargo.length} fragile items") }
         case ('hazard, flow) =>
           flow.
             groupedWithin(100, 4 seconds).
             mapAsync { shipHazard }.
-            foreach(identity)
+            foreach { cargo => println(s"shipped ${cargo.length} hazard items") }
         case ('standard, flow) =>
           flow.
             groupedWithin(100, 4 seconds).
             mapAsync { ship }.
-            foreach(identity)
+            foreach { cargo => println(s"shipped ${cargo.length} normal items") }
       }.
       fold(Future.successful()) { (a,b) => a flatMap { _ => b } }.
       flatMap(identity).

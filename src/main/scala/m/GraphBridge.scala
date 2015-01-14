@@ -13,8 +13,8 @@ class GraphInstance(websocket: ActorRef) extends Actor {
   import IntrospectableFlow._
   import JsonFormats._
 
-  val flow = context.actorOf(graphs.Numbers(self))
-  // val flow = context.actorOf(graphs.Shipping(self))
+  // val flow = context.actorOf(graphs.Numbers(self))
+  val flow = context.actorOf(graphs.Shipping(self))
 
   override def postStop: Unit = {
     println("Stopping instance of graph simulation.")

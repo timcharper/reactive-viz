@@ -20,7 +20,6 @@ object Numbers extends DemoableFlow {
   def flow(listener: ActorRef)(implicit system: ActorSystem): Unit = {
     implicit val materializer = FlowMaterializer()
 
-
     // Super simple:
     IntrospectableFlow(listener, Source(1 to 1000)).
       filter(isPrime). // artifically slow!
@@ -29,7 +28,6 @@ object Numbers extends DemoableFlow {
         println("all done")
         system.shutdown()
       }
-
   }
 
 
