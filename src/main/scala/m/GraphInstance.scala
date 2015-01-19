@@ -2,6 +2,7 @@ package m
 
 import play.api.libs.json._
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import m.websocket.RoutedMessage
 
 object JsonFormats {
   import GraphRegistry._
@@ -9,20 +10,24 @@ object JsonFormats {
 }
 
 // Boots up a graph instance
-class GraphInstance(websocket: ActorRef) extends Actor {
+class GraphInstance(websocket: m.websocket.WebsocketIO, flowDemo: m.graphs.DemoableFlow) extends Actor {
   import IntrospectableFlow._
   import JsonFormats._
 
   // val flow = context.actorOf(graphs.Numbers(self))
-  val flow = context.actorOf(graphs.Shipping(self))
+  val flow = flowDemo(self)
 
   override def postStop: Unit = {
+    try {
+      flow ! 'stop
+    } catch {
+      case e: Exception =>
+        println(s"Very exception $e")
+    }
     println("Stopping instance of graph simulation.")
-    flow ! 'stop
+    super.postStop()
   }
   def receive = {
-    case RoutedMessage("ping", value) =>
-      websocket ! RoutedMessage("pong", JsNull)
 
     case GraphRegistry.GraphInitialized =>
       websocket ! RoutedMessage(

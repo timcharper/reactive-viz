@@ -1,8 +1,8 @@
 {
-	"name": "reactive-viz.js",
-	"version": "0.1.0",
-	"dependencies": {
-    "machina": "0.4.0",
-		"lodash": "~2.4.1"
-	}
+  "name": "reactive-viz.js",
+  "version": "0.1.0",
+  "dependencies": {
+    "machina": "0.4.1",
+    "lodash": "~2.4.1"
+  }
 }

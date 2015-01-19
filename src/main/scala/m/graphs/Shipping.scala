@@ -65,8 +65,9 @@ object Shipping extends DemoableFlow {
     val batches = FileUtils.iterateFiles(new File("./packages/"), Array("json.ld"), true).toList.sortBy(_.toString)
 
     val a = IntrospectableFlow(listener, Source(batches)).
-      map { f => IntrospectableFlow(listener, Source(() =>
-        new AutoClosingLineIterator(f))) }.
+      map { f => IntrospectableFlow(listener,
+        Source(() =>
+          new AutoClosingLineIterator(f))) }.
       flatten(FlattenStrategy.concat[String]).
       map(Json.parse(_).as[Package]).
       // Is it labeled for hazardous?
@@ -105,8 +106,8 @@ object Shipping extends DemoableFlow {
       }.
       mergeUnordered.
 
-      // map(Json.toJson(_)).
-      // foreach(println)
+      // // map(Json.toJson(_)).
+      // // foreach(println)
 
       groupBy {
         case Package(Some(true),  Some(true),  _) => 'fragileHazard

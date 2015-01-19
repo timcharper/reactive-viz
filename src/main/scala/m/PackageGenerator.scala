@@ -5,7 +5,6 @@ import play.api.libs.json._
 import scala.collection.JavaConversions._
 import scala.util.Random
 
-
 object Contents {
   val normal = """
 accomplishd

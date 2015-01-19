@@ -21,11 +21,24 @@ object Numbers extends DemoableFlow {
     implicit val materializer = FlowMaterializer()
 
     // Super simple:
-    IntrospectableFlow(listener, Source(1 to 1000)).
-      filter(isPrime). // artifically slow!
+    val out = IntrospectableFlow(listener, Source(1 to 10000)).
+      groupBy(i => i % 5 == 0).
+      map {  // Source[(groupByValue, Source[flow])]
+        case (true, multsOf5) =>
+          multsOf5.
+            map { i =>
+              i
+            }
+        case (false, others) =>
+          others.
+            map { i =>
+              Thread.sleep(100)
+            }
+      }.
+      mergeUnordered.
       foreach(println).
-      onComplete { _ =>
-        println("all done")
+      onComplete { r =>
+        println(s"Result : ${r}")
         system.shutdown()
       }
   }
