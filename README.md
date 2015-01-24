@@ -8,11 +8,11 @@ Invoke:
 
 Open browser to the following: http://127.0.0.1:8080/index.html
 
-For more interactive development, you may prefer to run `sbt`, and then run `~re-start`, which will automatically rebuild the project and restart the server when scala changes are made.
+For more interactive development, you may prefer to run `sbt`, and then run `~ reStart`, which will automatically rebuild the project and restart the server when the Scala sources change.
 
 # Samples:
 
-A different sample can be used by modifying the value "demoableFlow", as seen in `src/main/scala/m/main.scala`.
+A different sample can be used by modifying the value `demoableFlow`, as seen in `src/main/scala/m/main.scala`.
 
 - **Numbers**: Demonstrates backpressure when one branch of a grouping is the bottleneck.
 - **Shipping**: More complex example; overview below.

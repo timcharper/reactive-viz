@@ -11,7 +11,7 @@ import m.websocket.WebsocketIO
 import spray.can.Http
 
 object HttpServer extends App {
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("reactive-viz")
   import system.dispatcher
 
   // To run a different demoable flow, substitute this line:
