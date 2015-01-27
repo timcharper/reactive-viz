@@ -3,7 +3,7 @@ version      := "1.0"
 scalaVersion := "2.11.5"
 
 resolvers ++= Seq(
-  Classpaths.typesafeReleases,
+  "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/",
   "spray repo stable" at "http://repo.spray.io/"
 )
 
