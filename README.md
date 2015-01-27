@@ -17,7 +17,9 @@ A different sample can be used by modifying the value `demoableFlow`, as seen in
 - **Numbers**: Demonstrates backpressure when one branch of a grouping is the bottleneck.
 - **Shipping**: More complex example; overview below.
 
-## Overnight Shipping packages:
+## Flow example overviews
+
+### Overnight Shipping packages:
 
 Overview:
 
@@ -39,4 +41,4 @@ Overview:
     - Standard: 80 packages at a time
     - Hazardous+fragile: 10
     - Fragile: 20 items at a time
-    - Hazaroud: 40
+    - Hazardous: 40
