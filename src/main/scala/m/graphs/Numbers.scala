@@ -1,11 +1,12 @@
 package m.graphs
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.stream.FlowMaterializer
+import akka.stream.ActorMaterializer
+import akka.stream.Materializer
+import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import m.lib.MergeUnordered.EnrichedSource
 import m.IntrospectableFlow
 object Numbers extends DemoableFlow {
   def isPrime(n: Int): Boolean = {
@@ -18,7 +19,7 @@ object Numbers extends DemoableFlow {
   // Tim's notes: simple, fold, concurrent, grouped; input=15000 to show buffering
   // text-scale-adjust
   def flow(listener: ActorRef)(implicit system: ActorSystem): Unit = {
-    implicit val materializer = FlowMaterializer()
+    implicit val materializer = ActorMaterializer()
 
     // Super simple:
     val out = IntrospectableFlow(listener, Source(1 to 10000)).
@@ -35,12 +36,11 @@ object Numbers extends DemoableFlow {
               Thread.sleep(100)
             }
       }.
-      mergeUnordered.
-      foreach(println).
-      onComplete { r =>
+      mapAsync(2)(_.runWith(Sink.foreach(println))).
+      runWith(Sink.onComplete { r =>
         println(s"Result : ${r}")
         system.shutdown()
-      }
+      })
   }
 
 
